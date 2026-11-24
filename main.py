@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 
 from src import settings
-from src.data import iter_source_dirs, load_json
+from src.data import Layout, list_source_uuids, load_json
 from src.filter_questions import load_filter_config, run_filter
 from src.markup import run_markup
 from src.merge import run_merge
@@ -45,7 +45,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--reranker-key", type=Path, default=settings.RERANKER_KEY, help="ключ сертификата (RERANKER_KEY)")
     parser.add_argument("--reranker-workers", type=int, default=7)
 
-    parser.add_argument("--output-dir", type=Path, default=settings.OUTPUT_DIR, help="куда писать отчёты и xlsx (OUTPUT_DIR)")
+    parser.add_argument("--output-dir", type=Path, default=settings.OUTPUT_DIR, help="корень результатов, по папке на этап (OUTPUT_DIR)")
     parser.add_argument("--label", default="ka", help="значение колонки source и суффикс имён отчётов")
     parser.add_argument("--force", action="store_true", help="пересчитать этапы, даже если выходные файлы уже есть")
     return parser.parse_args()
@@ -72,23 +72,24 @@ def main() -> None:
     if "rerank" in stages and not (args.reranker_url and args.reranker_cert and args.reranker_key):
         sys.exit("Для этапа rerank нужны RERANKER_URL, RERANKER_CERT и RERANKER_KEY (в .env или аргументами)")
 
-    source_dirs = iter_source_dirs(args.data_dir, resolve_source_uuids(args))
-    logger.info("Источников: %d, этапы: %s", len(source_dirs), ", ".join(stages))
+    layout = Layout(args.data_dir, args.output_dir)
+    source_uuids = list_source_uuids(args.data_dir, resolve_source_uuids(args))
+    logger.info("Источников: %d, этапы: %s", len(source_uuids), ", ".join(stages))
 
     for stage in stages:
         logger.info("=== %s ===", stage)
         if stage == "filter":
             cfg = load_filter_config(args.filter_config, args.filter_prompt)
-            run_filter(source_dirs, cfg, args.skill_url, batch_size=args.filter_batch_size, force=args.force)
+            run_filter(source_uuids, layout, cfg, args.skill_url, batch_size=args.filter_batch_size, force=args.force)
         elif stage == "merge":
-            run_merge(source_dirs)
+            run_merge(source_uuids, layout)
         elif stage == "markup":
-            run_markup(source_dirs, load_json(args.markup_config), args.skill_url, force=args.force)
+            run_markup(source_uuids, layout, load_json(args.markup_config), args.skill_url, force=args.force)
         elif stage == "rerank":
             client = RerankerClient(args.reranker_url, args.reranker_cert, args.reranker_key)
-            run_rerank(source_dirs, client, max_workers=args.reranker_workers, force=args.force)
+            run_rerank(source_uuids, layout, client, max_workers=args.reranker_workers, force=args.force)
         elif stage == "report":
-            run_reports(source_dirs, args.skill_url, args.output_dir, args.label)
+            run_reports(source_uuids, layout, args.skill_url, args.label)
 
 
 if __name__ == "__main__":

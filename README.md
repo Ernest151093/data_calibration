@@ -26,8 +26,8 @@ cp .env.example .env
 
 | Переменная | Назначение | По умолчанию |
 |---|---|---|
-| `DATA_DIR` | директория с поддиректориями `<source_uuid>`; сюда же пишутся промежуточные файлы | — (обязательна) |
-| `OUTPUT_DIR` | куда сохранять отчёты и xlsx | `output` |
+| `DATA_DIR` | директория с поддиректориями `<source_uuid>` и входными `*structured.json`; только читается | — (обязательна) |
+| `OUTPUT_DIR` | корень результатов: по папке на каждый этап | `output` |
 | `SKILL_URL` | адрес сервиса навыка | `http://localhost:8080/predict` |
 | `RERANKER_URL` | адрес реранкера | — |
 | `RERANKER_CERT`, `RERANKER_KEY` | клиентский сертификат и ключ реранкера | — |
@@ -60,21 +60,33 @@ python main.py --group sh --label sh
 
 ## Этапы и файлы
 
-Этапы выполняются в порядке `filter → merge → markup → rerank → report`. Все промежуточные файлы пишутся в `DATA_DIR/<source_uuid>/`.
+Этапы выполняются в порядке `filter → merge → markup → rerank → report`. `DATA_DIR` только читается; каждый этап пишет результаты в свою папку:
+
+```
+OUTPUT_DIR/
+├── filter/<source_uuid>/*structured_filtering_result.json
+├── merge/<source_uuid>/full_filtered_batch.json
+├── markup/<source_uuid>/control_set_lora_markup_part1.json
+├── rerank/<source_uuid>/full_filtered_batch_with_scores.json
+└── report/
+    ├── reports_<label>/<source_uuid>.json
+    ├── report_<label>.xlsx
+    └── task_<label>.xlsx
+```
 
 | Этап | Читает | Пишет |
 |---|---|---|
-| `filter` | `*structured.json` | `*structured_filtering_result.json` — списки вопросов `rag` / `norag` |
-| `merge` | `*structured.json` + `*_filtering_result.json` | `full_filtered_batch.json` — только `rag`-вопросы |
-| `markup` | `full_filtered_batch.json` | `control_set_lora_markup_part1.json` — разметка контрольной выборки (10%, но не меньше 100 вопросов) |
-| `rerank` | `full_filtered_batch.json` | `full_filtered_batch_with_scores.json` — то же + `reranker_relevance_score` у каждого источника |
-| `report` | `full_filtered_batch_with_scores.json` + `control_set_lora_markup_part1.json` | `OUTPUT_DIR/reports_<label>/<uuid>.json`, `report_<label>.xlsx`, `task_<label>.xlsx` |
+| `filter` | `DATA_DIR/<uuid>/*structured.json` | `filter/<uuid>/*structured_filtering_result.json` — списки вопросов `rag` / `norag` |
+| `merge` | `DATA_DIR/<uuid>/*structured.json` + `filter/<uuid>/` | `merge/<uuid>/full_filtered_batch.json` — только `rag`-вопросы |
+| `markup` | `merge/<uuid>/full_filtered_batch.json` | `markup/<uuid>/control_set_lora_markup_part1.json` — разметка контрольной выборки (10%, но не меньше 100 вопросов) |
+| `rerank` | `merge/<uuid>/full_filtered_batch.json` | `rerank/<uuid>/full_filtered_batch_with_scores.json` — то же + `reranker_relevance_score` у каждого источника |
+| `report` | `rerank/<uuid>/` + `markup/<uuid>/` | `report/reports_<label>/<uuid>.json`, `report/report_<label>.xlsx`, `report/task_<label>.xlsx` |
 
 Этапы `filter`, `markup` и `rerank` пропускают источник, если их выходной файл уже существует, поэтому прерванный запуск можно просто повторить. Чтобы пересчитать этап, удалите его выходной файл или запустите с `--force`. `merge` и `report` выполняются всегда.
 
 ## Результаты
 
-**`report_<label>.xlsx`** — строка на источник, колонки для каждого типа источника (`faq`, `document`):
+**`report/report_<label>.xlsx`** — строка на источник, колонки для каждого типа источника (`faq`, `document`):
 
 | Колонка | Значение |
 |---|---|
@@ -89,9 +101,9 @@ python main.py --group sh --label sh
 
 Если какого-то типа источников у источника нет, его колонки равны 0. Колонки `report` и `is_top_agent` всегда пустые.
 
-**`task_<label>.xlsx`** — список вопросов по кластерам из отчёта. Кластеризация в конфиге отчёта сейчас выключена, поэтому `list_questions` пустой.
+**`report/task_<label>.xlsx`** — список вопросов по кластерам из отчёта. Кластеризация в конфиге отчёта сейчас выключена, поэтому `list_questions` пустой.
 
-**`reports_<label>/<uuid>.json`** — полный ответ сервиса по источнику.
+**`report/reports_<label>/<uuid>.json`** — полный ответ сервиса по источнику.
 
 ## Структура проекта
 

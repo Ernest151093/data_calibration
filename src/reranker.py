@@ -11,9 +11,12 @@ import requests
 import urllib3
 from tqdm import tqdm
 
-from src.data import BATCH_WITH_SCORES, FULL_FILTERED_BATCH, get_question, get_sources, load_json, save_json
+from src import merge
+from src.data import BATCH_WITH_SCORES, FULL_FILTERED_BATCH, Layout, get_question, get_sources, load_json, save_json
 
 logger = logging.getLogger(__name__)
+
+STAGE = "rerank"
 
 # Реранкер вызывается с verify=False
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -62,13 +65,13 @@ def score_batch_elem(client: RerankerClient, batch_elem: dict) -> None:
         source["reranker_relevance_score"] = score
 
 
-def run_rerank(source_dirs: list[Path], client: RerankerClient, max_workers: int = 7, force: bool = False) -> None:
-    for source_dir in source_dirs:
-        out_path = source_dir / BATCH_WITH_SCORES
+def run_rerank(source_uuids: list[str], layout: Layout, client: RerankerClient, max_workers: int = 7, force: bool = False) -> None:
+    for source_uuid in source_uuids:
+        out_path = layout.stage_dir(STAGE, source_uuid) / BATCH_WITH_SCORES
         if out_path.exists() and not force:
             continue
 
-        batch_path = source_dir / FULL_FILTERED_BATCH
+        batch_path = layout.stage_dir(merge.STAGE, source_uuid) / FULL_FILTERED_BATCH
         if not batch_path.exists():
             logger.warning("Нет %s", batch_path)
             continue
@@ -78,7 +81,7 @@ def run_rerank(source_dirs: list[Path], client: RerankerClient, max_workers: int
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = [executor.submit(score_batch_elem, client, el) for el in batch_elems]
-            for future in tqdm(as_completed(futures), total=len(futures), desc=f"rerank {source_dir.name}", leave=False):
+            for future in tqdm(as_completed(futures), total=len(futures), desc=f"rerank {source_uuid}", leave=False):
                 future.result()
 
         save_json(out_path, data)

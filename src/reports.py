@@ -3,16 +3,18 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Optional
 
 import pandas as pd
 from tqdm import tqdm
 
-from src.data import BATCH_WITH_SCORES, MARKUP_RESULT, get_question, get_sources, load_json, save_json
+from src import markup, reranker
+from src.data import BATCH_WITH_SCORES, MARKUP_RESULT, Layout, get_question, get_sources, load_json, save_json
 from src.skill_client import predict, question_from_element_id
 
 logger = logging.getLogger(__name__)
+
+STAGE = "report"
 
 SOURCE_TYPES = ("faq", "document")
 
@@ -107,10 +109,9 @@ def present_source_types(batch: dict) -> set:
     return {source["data_source_type"] for el in batch["request"]["batch"] for source in get_sources(el)}
 
 
-def build_source_report(source_dir: Path, skill_url: str) -> Optional[SourceReport]:
-    source_uuid = source_dir.name
-    batch_path = source_dir / BATCH_WITH_SCORES
-    markup_path = source_dir / MARKUP_RESULT
+def build_source_report(source_uuid: str, layout: Layout, skill_url: str) -> Optional[SourceReport]:
+    batch_path = layout.stage_dir(reranker.STAGE, source_uuid) / BATCH_WITH_SCORES
+    markup_path = layout.stage_dir(markup.STAGE, source_uuid) / MARKUP_RESULT
     for path in (batch_path, markup_path):
         if not path.exists():
             logger.warning("Нет %s", path)
@@ -119,7 +120,7 @@ def build_source_report(source_dir: Path, skill_url: str) -> Optional[SourceRepo
     batch = drop_empty_sources(load_json(batch_path))
     batch_elems = batch["request"]["batch"]
     if not batch_elems:
-        logger.warning("Пустой батч, пропуск: %s", source_dir)
+        logger.warning("Пустой батч, пропуск: %s", batch_path)
         return None
 
     questions_count = sum(el.get("duplicates_count", 1) for el in batch_elems)
@@ -218,14 +219,14 @@ def build_task_row(report: SourceReport, label: str) -> dict:
     }
 
 
-def run_reports(source_dirs: list[Path], skill_url: str, output_dir: Path, label: str) -> None:
+def run_reports(source_uuids: list[str], layout: Layout, skill_url: str, label: str) -> None:
+    output_dir = layout.stage_dir(STAGE)
     reports_dir = output_dir / f"reports_{label}"
-    reports_dir.mkdir(parents=True, exist_ok=True)
 
     report_rows = []
     task_rows = []
-    for source_dir in tqdm(source_dirs, desc="reports"):
-        report = build_source_report(source_dir, skill_url)
+    for source_uuid in tqdm(source_uuids, desc="reports"):
+        report = build_source_report(source_uuid, layout, skill_url)
         if report is None:
             continue
         save_json(reports_dir / f"{report.source_uuid}.json", report.response)
@@ -235,6 +236,7 @@ def run_reports(source_dirs: list[Path], skill_url: str, output_dir: Path, label
     if not report_rows:
         logger.warning("Ни одного отчёта не построено")
         return
+    output_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(report_rows).to_excel(output_dir / f"report_{label}.xlsx")
     pd.DataFrame(task_rows).to_excel(output_dir / f"task_{label}.xlsx")
     logger.info("Отчёты сохранены в %s", output_dir)

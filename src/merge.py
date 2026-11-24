@@ -2,18 +2,21 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
-from src.data import FILTERING_SUFFIX, FULL_FILTERED_BATCH, get_question, load_json, save_json
+from src import filter_questions
+from src.data import FILTERING_SUFFIX, FULL_FILTERED_BATCH, Layout, get_question, load_json, save_json
 
 logger = logging.getLogger(__name__)
 
+STAGE = "merge"
 
-def merge_source(source_dir: Path) -> None:
+
+def merge_source(source_uuid: str, layout: Layout) -> None:
     united_batch = None
+    filter_dir = layout.stage_dir(filter_questions.STAGE, source_uuid)
 
-    for res_path in sorted(source_dir.glob("*" + FILTERING_SUFFIX)):
-        original_batch_path = res_path.with_name(res_path.name.removesuffix(FILTERING_SUFFIX) + ".json")
+    for res_path in sorted(filter_dir.glob("*" + FILTERING_SUFFIX)):
+        original_batch_path = layout.input_dir(source_uuid) / (res_path.name.removesuffix(FILTERING_SUFFIX) + ".json")
 
         rag_set = set(load_json(res_path)["rag"])
         original_batch = load_json(original_batch_path)
@@ -27,11 +30,11 @@ def merge_source(source_dir: Path) -> None:
             united_batch["request"]["batch"].extend(filtered_items)
 
     if united_batch is None:
-        logger.warning("Нет результатов фильтрации в %s", source_dir)
+        logger.warning("Нет результатов фильтрации в %s", filter_dir)
         return
-    save_json(source_dir / FULL_FILTERED_BATCH, united_batch)
+    save_json(layout.stage_dir(STAGE, source_uuid) / FULL_FILTERED_BATCH, united_batch)
 
 
-def run_merge(source_dirs: list[Path]) -> None:
-    for source_dir in source_dirs:
-        merge_source(source_dir)
+def run_merge(source_uuids: list[str], layout: Layout) -> None:
+    for source_uuid in source_uuids:
+        merge_source(source_uuid, layout)

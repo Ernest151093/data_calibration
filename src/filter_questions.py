@@ -8,10 +8,12 @@ from typing import Optional
 
 from tqdm import tqdm
 
-from src.data import FILTERING_SUFFIX, STRUCTURED_GLOB, get_question, load_json, save_json
+from src.data import FILTERING_SUFFIX, STRUCTURED_GLOB, Layout, get_question, load_json, save_json
 from src.skill_client import make_batch_eval, predict, question_from_element_id
 
 logger = logging.getLogger(__name__)
+
+STAGE = "filter"
 
 
 def load_filter_config(config_path: Path, prompt_path: Path) -> dict:
@@ -60,10 +62,11 @@ def filter_file(path: Path, cfg: dict, skill_url: str, batch_size: int) -> dict:
     return result
 
 
-def run_filter(source_dirs: list[Path], cfg: dict, skill_url: str, batch_size: int = 50, force: bool = False) -> None:
-    for source_dir in source_dirs:
-        for path in tqdm(sorted(source_dir.glob(STRUCTURED_GLOB)), desc=f"filter {source_dir.name}"):
-            out_path = path.with_name(path.name.removesuffix(".json") + FILTERING_SUFFIX)
+def run_filter(source_uuids: list[str], layout: Layout, cfg: dict, skill_url: str, batch_size: int = 50, force: bool = False) -> None:
+    for source_uuid in source_uuids:
+        out_dir = layout.stage_dir(STAGE, source_uuid)
+        for path in tqdm(sorted(layout.input_dir(source_uuid).glob(STRUCTURED_GLOB)), desc=f"filter {source_uuid}"):
+            out_path = out_dir / (path.name.removesuffix(".json") + FILTERING_SUFFIX)
             if out_path.exists() and not force:
                 continue
             save_json(out_path, filter_file(path, cfg, skill_url, batch_size))
