@@ -1,0 +1,58 @@
+{
+    "cache": {
+        "ignore_cache": true
+    },
+    "tasks": [
+        {
+            "type": "llm_retrieval",
+            "name": "relevance",
+            "configuration": {
+                "repeats": 1,
+                "setting": "relevance",
+                "llm_params": {
+                    "model_name": "Qwen3-LoRA-4B",
+                    "model_endpoint": "qwen_lora",
+                    "model_profanity_check": false,
+                    "temperature": 1e-07,
+                    "top_p": 1,
+                    "repetition_penalty": 1
+                },
+                "max_tokens": {
+                    "out_max_tokens": 120000,
+                    "context_max_tokens": 120000,
+                    "dialogue_max_tokens": 120000
+                },
+                "max_user_messages": 1,
+                "dialogue_crop_strategy": "tokens",
+                "user_prompt_fields_templates": {
+                    "context_configuration": {
+                        "chunk_template": "\n{content}"
+                    },
+                    "dialogue_configuration": {
+                        "user_template": "Сообщение #{message_index}\n{role}\n{message_content}",
+                        "assistant_template": "Сообщение #{message_index}\n{role}\n{message_content}",
+                        "role_mapping": {
+                            "user": "Пользователь",
+                            "assistant": "Ассистент"
+                        }
+                    }
+                },
+                "prompts": {
+                    "system_prompt": "Ты эксперт по оценке релевантности контекста.\nТвоя задача оценить, может ли предложенный контекст быть использован для ответа на вопрос пользователя. Ответь yes, если можно и no если нельзя\n## Формат ответа\nОтветь одним словом без кавычек\nyes\nno",
+                    "user_prompt": "# Задание:\nИСТОРИЯ ДИАЛОГА:\n{dialogue_history}\n\nКонтекст:{context}"
+                },
+                "output_format": {
+                    "setting": "relevance",
+                    "enabled": true,
+                    "metrics_mapping": {
+                        "key": null,
+                        "values": {
+                            "yes": true,
+                            "no": false
+                        }
+                    }
+                }
+            }
+        }
+    ]
+}
