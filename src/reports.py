@@ -137,7 +137,7 @@ def build_source_report(source_uuid: str, layout: Layout, skill_url: str) -> Opt
         for question, tags in question2tags.items()
         if question in question2messages
     ]
-    calibration = predict(skill_url, batch, build_coverage_config())
+    calibration = predict(skill_url, source_uuid, batch, build_coverage_config())
     if "skillResult" not in calibration:
         logger.error("[%s] ошибка калибровки: %.500s", source_uuid, calibration)
         return None
@@ -166,6 +166,7 @@ def build_source_report(source_uuid: str, layout: Layout, skill_url: str) -> Opt
     del batch["request"]["control_set"]
     response = predict(
         skill_url,
+        source_uuid,
         batch,
         build_coverage_config(
             thr_faq=stats.get("faq", {}).get("threshold"),

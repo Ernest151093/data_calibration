@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
@@ -13,6 +13,7 @@ from tqdm import tqdm
 
 from src import merge
 from src.data import BATCH_WITH_SCORES, FULL_FILTERED_BATCH, Layout, get_question, get_sources, load_json, save_json
+from src.skill_client import format_msg_tm
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ class RerankerClient:
                 json_data = {
                     "workId": str(uuid.uuid4()),
                     "msgId": str(uuid.uuid4()),
-                    "msgTm": datetime.now().isoformat() + "Z",
+                    "msgTm": format_msg_tm(datetime.now(timezone.utc)),
                     "inputs": [{"query": query.lower(), "paragraph": text.lower()} for text in passages_text],
                 }
                 resp = requests.post(

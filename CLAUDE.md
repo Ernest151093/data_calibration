@@ -27,7 +27,7 @@ flake8 main.py src/                      # настройки в .flake8
 
 ## Внешние сервисы
 
-- **Сервис навыка** (`SKILL_URL`, по умолчанию `http://localhost:8080/predict`) — `src/skill_client.py::predict`: multipart POST с полями `predictParams` (фиксированный фиктивный JSON), `structuredData` и `configuration`. Ответ — в `response["skillResult"]["response"]` (`tasks_responses` для LLM-задач, `source_types_coverage` / `clusters` для покрытия). Нужен всем этапам, кроме `merge` и `rerank`.
+- **Сервис навыка** (`SKILL_URL`, по умолчанию `http://localhost:8080/predict`) — `src/skill_client.py::predict`: multipart POST с полями `predictParams` (`make_predict_params`: новые uuid4 в `msgId`/`workId`, `msgTm` — UTC ISO 8601 с миллисекундами, `msgProperties.external_uuid` — UUID обрабатываемого источника, т.е. имя его папки), `structuredData` и `configuration`. Ответ — в `response["skillResult"]["response"]` (`tasks_responses` для LLM-задач, `source_types_coverage` / `clusters` для покрытия). Нужен всем этапам, кроме `merge` и `rerank`.
 - **Реранкер** (`RERANKER_URL`) — HTTPS с клиентским сертификатом и `verify=False`; `RerankerClient.get_scores` делает 10 попыток и при неудаче возвращает скоры `0` (с warning в логе).
 
 ## Этапы (`--stages`, всегда выполняются в этом порядке)

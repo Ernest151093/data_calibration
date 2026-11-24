@@ -41,7 +41,7 @@ def run_markup(source_uuids: list[str], layout: Layout, cfg: dict, skill_url: st
         logger.info("[%s] Total control_set: %d", source_uuid, len(control_set))
 
         try:
-            markup_response = predict(skill_url, make_batch_eval(control_set), cfg)
+            markup_response = predict(skill_url, source_uuid, make_batch_eval(control_set), cfg)
         except Exception as exc:
             logger.error("[%s] ошибка разметки: %r", source_uuid, exc)
             continue

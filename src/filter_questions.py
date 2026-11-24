@@ -35,11 +35,11 @@ def dedupe_by_question(batch_elems: list[dict]) -> list[dict]:
     return uniq_batch
 
 
-def classify_batch(batch: list[dict], cfg: dict, skill_url: str, retries: int = 5) -> Optional[dict]:
+def classify_batch(batch: list[dict], cfg: dict, skill_url: str, source_uuid: str, retries: int = 5) -> Optional[dict]:
     """Возвращает {"rag": [...], "norag": [...]} или None, если все попытки неудачны."""
     for _ in range(retries):
         try:
-            response = predict(skill_url, make_batch_eval(batch), cfg)
+            response = predict(skill_url, source_uuid, make_batch_eval(batch), cfg)
             result = {"rag": [], "norag": []}
             for task_response in response["skillResult"]["response"]["tasks_responses"]:
                 tag = task_response["task_result"]["metrics"][0]["value"]
@@ -50,11 +50,11 @@ def classify_batch(batch: list[dict], cfg: dict, skill_url: str, retries: int = 
     return None
 
 
-def filter_file(path: Path, cfg: dict, skill_url: str, batch_size: int) -> dict:
+def filter_file(path: Path, cfg: dict, skill_url: str, source_uuid: str, batch_size: int) -> dict:
     uniq_batch = dedupe_by_question(load_json(path)["request"]["batch"])
     result = {"rag": [], "norag": []}
     for i in range(0, len(uniq_batch), batch_size):
-        batch_result = classify_batch(uniq_batch[i:i + batch_size], cfg, skill_url)
+        batch_result = classify_batch(uniq_batch[i:i + batch_size], cfg, skill_url, source_uuid)
         if batch_result is None:
             continue
         result["rag"].extend(batch_result.get("rag", []))
@@ -69,4 +69,4 @@ def run_filter(source_uuids: list[str], layout: Layout, cfg: dict, skill_url: st
             out_path = out_dir / (path.name.removesuffix(".json") + FILTERING_SUFFIX)
             if out_path.exists() and not force:
                 continue
-            save_json(out_path, filter_file(path, cfg, skill_url, batch_size))
+            save_json(out_path, filter_file(path, cfg, skill_url, source_uuid, batch_size))

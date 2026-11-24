@@ -4,22 +4,38 @@ from __future__ import annotations
 import io
 import json
 import uuid
+from datetime import datetime, timezone
 
 import requests
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 
 from src.data import get_question
 
-PREDICT_PARAMS = '{"msgId": "message001", "workId": "word001", "msgTm": "time001", "msgProperties": {"external_uuid": "22222222"}}'
-
 ELEMENT_ID_SEPARATOR = "|||"
 
 
-def predict(url: str, structured_data: dict, configuration: dict, timeout: int = 99999) -> dict:
+def format_msg_tm(moment: datetime) -> str:
+    """ISO 8601 в UTC с миллисекундами: 2026-11-24T15:04:05.123Z."""
+    return moment.astimezone(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+def make_predict_params(source_uuid: str) -> str:
+    """predictParams запроса: новые msgId/workId на каждый вызов, external_uuid — UUID источника."""
+    return json.dumps(
+        {
+            "msgId": str(uuid.uuid4()),
+            "workId": str(uuid.uuid4()),
+            "msgTm": format_msg_tm(datetime.now(timezone.utc)),
+            "msgProperties": {"external_uuid": source_uuid},
+        }
+    )
+
+
+def predict(url: str, source_uuid: str, structured_data: dict, configuration: dict, timeout: int = 99999) -> dict:
     """Отправляет запрос в сервис навыка; данные стримятся через MultipartEncoder."""
     encoder = MultipartEncoder(
         fields={
-            "predictParams": (None, PREDICT_PARAMS, "application/json"),
+            "predictParams": (None, make_predict_params(source_uuid), "application/json"),
             "structuredData": (None, io.BytesIO(json.dumps(structured_data).encode("utf-8")), "application/json"),
             "configuration": (None, io.BytesIO(json.dumps(configuration).encode("utf-8")), "application/json"),
         }
