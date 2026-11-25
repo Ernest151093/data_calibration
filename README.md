@@ -26,8 +26,8 @@ cp .env.example .env
 
 | Переменная | Назначение | По умолчанию |
 |---|---|---|
-| `DATA_DIR` | директория с поддиректориями `<source_uuid>` и входными `*structured.json`; только читается | — (обязательна) |
-| `OUTPUT_DIR` | корень результатов: по папке на каждый этап | `output` |
+| `DATA_DIR` | директория `structured_data` с поддиректориями групп (`ka`, `sh`), в каждой — `<source_uuid>/*structured.json`; только читается | — (обязательна) |
+| `OUTPUT_DIR` | корень результатов: `<stage>/<group>/<source_uuid>/` | `output` |
 | `SKILL_URL` | адрес сервиса навыка | `http://localhost:8080/predict` |
 | `RERANKER_URL` | адрес реранкера | — |
 | `RERANKER_CERT`, `RERANKER_KEY` | клиентский сертификат и ключ реранкера | — |
@@ -43,7 +43,7 @@ cp .env.example .env
 # весь пайплайн для группы источников ka из configs/sources.json
 python main.py --group ka
 
-# только указанные источники
+# только указанные источники (группа ka/sh определяется по папке в DATA_DIR)
 python main.py --sources 3dbbf0a0-4858-4591-9e26-5a672edf5a2e 8771ad26-20cc-4130-93cb-4435da96e0ee
 
 # только отдельные этапы
@@ -52,11 +52,11 @@ python main.py --group ka --stages markup report
 # пересчитать этапы, даже если результаты уже есть
 python main.py --group ka --force
 
-# своя метка для колонки source и имён отчётов
-python main.py --group sh --label sh
+# своя метка для колонки source и имён отчётов (по умолчанию — имя группы)
+python main.py --group sh --label sh_test
 ```
 
-Без `--sources` / `--group` обрабатываются все поддиректории `DATA_DIR`.
+Без `--sources` / `--group` обрабатываются все источники всех групп `DATA_DIR`. С `--sources` каждый UUID ищется в `DATA_DIR/ka/` и `DATA_DIR/sh/`; найденные источники обрабатываются по группам.
 
 ## Этапы и файлы
 
@@ -64,11 +64,11 @@ python main.py --group sh --label sh
 
 ```
 OUTPUT_DIR/
-├── filter/<source_uuid>/*structured_filtering_result.json
-├── merge/<source_uuid>/full_filtered_batch.json
-├── markup/<source_uuid>/control_set_lora_markup_part1.json
-├── rerank/<source_uuid>/full_filtered_batch_with_scores.json
-└── report/
+├── filter/<group>/<source_uuid>/*structured_filtering_result.json
+├── merge/<group>/<source_uuid>/full_filtered_batch.json
+├── markup/<group>/<source_uuid>/control_set_lora_markup_part1.json
+├── rerank/<group>/<source_uuid>/full_filtered_batch_with_scores.json
+└── report/<group>/
     ├── reports_<label>/<source_uuid>.json
     ├── report_<label>.xlsx
     └── task_<label>.xlsx
@@ -76,17 +76,17 @@ OUTPUT_DIR/
 
 | Этап | Читает | Пишет |
 |---|---|---|
-| `filter` | `DATA_DIR/<uuid>/*structured.json` | `filter/<uuid>/*structured_filtering_result.json` — списки вопросов `rag` / `norag` |
-| `merge` | `DATA_DIR/<uuid>/*structured.json` + `filter/<uuid>/` | `merge/<uuid>/full_filtered_batch.json` — только `rag`-вопросы |
-| `markup` | `merge/<uuid>/full_filtered_batch.json` | `markup/<uuid>/control_set_lora_markup_part1.json` — разметка контрольной выборки (10%, но не меньше 100 вопросов) |
-| `rerank` | `merge/<uuid>/full_filtered_batch.json` | `rerank/<uuid>/full_filtered_batch_with_scores.json` — то же + `reranker_relevance_score` у каждого источника |
-| `report` | `rerank/<uuid>/` + `markup/<uuid>/` | `report/reports_<label>/<uuid>.json`, `report/report_<label>.xlsx`, `report/task_<label>.xlsx` |
+| `filter` | `DATA_DIR/<group>/<uuid>/*structured.json` | `filter/<group>/<uuid>/*structured_filtering_result.json` — списки вопросов `rag` / `norag` |
+| `merge` | `DATA_DIR/<group>/<uuid>/*structured.json` + `filter/<group>/<uuid>/` | `merge/<group>/<uuid>/full_filtered_batch.json` — только `rag`-вопросы |
+| `markup` | `merge/<group>/<uuid>/full_filtered_batch.json` | `markup/<group>/<uuid>/control_set_lora_markup_part1.json` — разметка контрольной выборки (10%, но не меньше 100 вопросов) |
+| `rerank` | `merge/<group>/<uuid>/full_filtered_batch.json` | `rerank/<group>/<uuid>/full_filtered_batch_with_scores.json` — то же + `reranker_relevance_score` у каждого источника |
+| `report` | `rerank/<group>/<uuid>/` + `markup/<group>/<uuid>/` | `report/<group>/reports_<label>/<uuid>.json`, `report/<group>/report_<label>.xlsx`, `report/<group>/task_<label>.xlsx` |
 
 Этапы `filter`, `markup` и `rerank` пропускают источник, если их выходной файл уже существует, поэтому прерванный запуск можно просто повторить. Чтобы пересчитать этап, удалите его выходной файл или запустите с `--force`. `merge` и `report` выполняются всегда.
 
 ## Результаты
 
-**`report/report_<label>.xlsx`** — строка на источник, колонки для каждого типа источника (`faq`, `document`):
+**`report/<group>/report_<label>.xlsx`** — строка на источник, колонки для каждого типа источника (`faq`, `document`):
 
 | Колонка | Значение |
 |---|---|
@@ -101,9 +101,9 @@ OUTPUT_DIR/
 
 Если какого-то типа источников у источника нет, его колонки равны 0. Колонки `report` и `is_top_agent` всегда пустые.
 
-**`report/task_<label>.xlsx`** — список вопросов по кластерам из отчёта. Кластеризация в конфиге отчёта сейчас выключена, поэтому `list_questions` пустой.
+**`report/<group>/task_<label>.xlsx`** — список вопросов по кластерам из отчёта. Кластеризация в конфиге отчёта сейчас выключена, поэтому `list_questions` пустой.
 
-**`report/reports_<label>/<uuid>.json`** — полный ответ сервиса по источнику.
+**`report/<group>/reports_<label>/<uuid>.json`** — полный ответ сервиса по источнику.
 
 ## Структура проекта
 
@@ -112,5 +112,4 @@ main.py              точка входа
 src/                 логика этапов (по модулю на этап) и клиенты сервисов
 configs/             конфиги задач и группы источников
 prompts/             промпты
-*.ipynb              исходные ноутбуки, оставлены для справки; рабочий код — в src/
 ```

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Что это
 
-Пайплайн калибровки **отчёта о покрытии базы знаний** (RAG) для источников чат-ассистента. Точка входа — `main.py`, логика этапов — в пакете `src/` (по модулю на этап). Этапы связаны только через JSON-файлы: `DATA_DIR` только читается, каждый этап пишет в свою папку `OUTPUT_DIR/<stage>/<source_uuid>/` и читает результаты предыдущих этапов оттуда же. Исходные Jupyter-ноутбуки (`run_*.ipynb`, `merge_filtered_reports.ipynb`) оставлены как референс, из них перенесена логика; правки вносить в `src/`. Комментарии, логи и промпты — на русском. Пользовательская документация (установка, запуск, описание колонок отчётов) — в `README.md`; при изменении CLI, переменных `.env`, имён файлов или колонок отчёта обновлять и его.
+Пайплайн калибровки **отчёта о покрытии базы знаний** (RAG) для источников чат-ассистента. Точка входа — `main.py`, логика этапов — в пакете `src/` (по модулю на этап). Этапы связаны только через JSON-файлы: `DATA_DIR` только читается, каждый этап пишет в свою папку `OUTPUT_DIR/<stage>/<group>/<source_uuid>/` (`group` — `ka`/`sh`) и читает результаты предыдущих этапов оттуда же. Исходные Jupyter-ноутбуки (`run_*.ipynb`, `merge_filtered_reports.ipynb`) оставлены как референс, из них перенесена логика; правки вносить в `src/`. Комментарии, логи и промпты — на русском. Пользовательская документация (установка, запуск, описание колонок отчётов) — в `README.md`; при изменении CLI, переменных `.env`, имён файлов или колонок отчёта обновлять и его.
 
 ## Команды
 
@@ -23,7 +23,7 @@ flake8 main.py src/                      # настройки в .flake8
 
 Базовые пути (данные, результаты, конфиги, промпты, сертификаты) и хосты (`SKILL_URL`, `RERANKER_URL`) задаются в `.env` и читаются в `src/settings.py`; относительные пути — от корня проекта. Аргументы командной строки переопределяют `.env`, а переменные окружения процесса имеют приоритет над `.env`. Новые пути/хосты добавлять в `settings.py` и `.env.example`, не хардкодить в модулях.
 
-Без `--sources`/`--group` обрабатываются все поддиректории `DATA_DIR`. Отчёты пишутся в `OUTPUT_DIR/report/` (`OUTPUT_DIR` по умолчанию `output/`): `reports_<label>/<uuid>.json`, `report_<label>.xlsx`, `task_<label>.xlsx`; `--label` (по умолчанию `ka`) также идёт в колонку `source`. Тестов нет.
+Без `--sources`/`--group` обрабатываются все источники всех групп `DATA_DIR`; с `--sources` группа каждого UUID определяется по папке `DATA_DIR/<group>/<uuid>` (`group_source_uuids` в `src/data.py`), этапы гоняются по группам. Отчёты пишутся в `OUTPUT_DIR/report/<group>/` (`OUTPUT_DIR` по умолчанию `output/`): `reports_<label>/<uuid>.json`, `report_<label>.xlsx`, `task_<label>.xlsx`; `--label` (по умолчанию — имя группы) также идёт в колонку `source`. Тестов нет.
 
 ## Внешние сервисы
 
@@ -42,8 +42,8 @@ flake8 main.py src/                      # настройки в .flake8
 
 ## Соглашения по данным
 
-- Входные данные вне репозитория: `DATA_DIR/<source_uuid>/*structured.json`. Группы источников (`uuid -> число вопросов`) — `SOURCES_CONFIG` (`configs/sources.json`).
-- Пути строит `Layout` (`src/data.py`): `input_dir(uuid)` и `stage_dir(stage, uuid)`. Имя папки этапа — константа `STAGE` в его модуле; этап читает вход предыдущего через `layout.stage_dir(<модуль>.STAGE, uuid)`. Имена файлов — константы в `src/data.py`.
+- Входные данные вне репозитория: `DATA_DIR/<group>/<source_uuid>/*structured.json`, группы — `ka`, `sh`. Группы источников (`uuid -> число вопросов`) — `SOURCES_CONFIG` (`configs/sources.json`).
+- Пути строит `Layout(data_dir, output_dir, group)` (`src/data.py`): `input_dir(uuid)` и `stage_dir(stage, uuid)` → `output_dir/<stage>/<group>/<uuid>`. Имя папки этапа — константа `STAGE` в его модуле; этап читает вход предыдущего через `layout.stage_dir(<модуль>.STAGE, uuid)`. Имена файлов — константы в `src/data.py`.
 - Формат батча: `{"request": {"batch": [{"messages": [...], "duplicates_count"?: int}]}}`. `messages[-2]["content"]` — вопрос пользователя (`get_question`), `messages[-1]["sources"]` — источники (`get_sources`; поля `data_source_type` = `faq`|`document`, `content` или `metadata.raw_text`, `reranker_relevance_score`).
 - `element_id` в LLM-задачах — `"<вопрос>|||<uuid4>"`; результаты сопоставляются с батчем по вопросу, поэтому вопрос везде берётся из `messages[-2]`.
 - `filter`, `markup`, `rerank` пропускают источник, если выходной файл уже есть (`--force` — пересчитать).
