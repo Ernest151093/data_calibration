@@ -10,8 +10,8 @@
                 "repeats": 1,
                 "setting": "expected_source_binary",
                 "llm_params": {
-                    "model_name": "Qwen3-LoRA-4B",
-                    "model_endpoint": "qwen_lora",
+                    "model_name": "GigaChat-3-Ultra",
+                    "model_endpoint": "default",
                     "model_profanity_check": false,
                     "temperature": 1e-07,
                     "top_p": 1,
