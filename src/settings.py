@@ -35,7 +35,6 @@ OUTPUT_DIR = env_path("OUTPUT_DIR", "output")
 LOG_DIR = env_path("LOG_DIR", "logs")
 
 # Конфиги и промпты
-SOURCES_CONFIG = env_path("SOURCES_CONFIG", "configs/sources.json")
 FILTER_CONFIG = env_path("FILTER_CONFIG", "configs/expected_source_binary.json")
 FILTER_PROMPT = env_path("FILTER_PROMPT", "prompts/prompt_rag_norag_v3.txt")
 MARKUP_CONFIG = env_path("MARKUP_CONFIG", "configs/relevance_markup.json")

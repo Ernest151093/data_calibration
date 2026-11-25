@@ -33,7 +33,7 @@ def parse_args() -> argparse.Namespace:
 
     sources = parser.add_mutually_exclusive_group()
     sources.add_argument("--sources", nargs="+", metavar="UUID", help="UUID источников")
-    sources.add_argument("--group", help="группа источников из SOURCES_CONFIG и поддиректория DATA_DIR (ka, sh)")
+    sources.add_argument("--group", help="группа источников — поддиректория DATA_DIR (ka, sh)")
 
     parser.add_argument("--skill-url", default=settings.SKILL_URL, help="SKILL_URL")
     parser.add_argument("--filter-config", type=Path, default=settings.FILTER_CONFIG, help="FILTER_CONFIG")
@@ -51,17 +51,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--label", help="значение колонки source и суффикс имён отчётов (по умолчанию — имя группы)")
     parser.add_argument("--force", action="store_true", help="пересчитать этапы, даже если выходные файлы уже есть")
     return parser.parse_args()
-
-
-def resolve_source_uuids(args: argparse.Namespace):
-    if args.sources:
-        return args.sources
-    if args.group:
-        groups = load_json(settings.SOURCES_CONFIG)
-        if args.group not in groups:
-            sys.exit(f"Группа {args.group!r} не найдена в {settings.SOURCES_CONFIG}: {', '.join(groups)}")
-        return list(groups[args.group])
-    return None
 
 
 def setup_logging(log_dir: Path) -> Path:
@@ -87,7 +76,9 @@ def main() -> None:
     if "rerank" in stages and not (args.reranker_url and args.reranker_cert and args.reranker_key):
         sys.exit("Для этапа rerank нужны RERANKER_URL, RERANKER_CERT и RERANKER_KEY (в .env или аргументами)")
 
-    groups = group_source_uuids(args.data_dir, resolve_source_uuids(args), args.group)
+    groups = group_source_uuids(args.data_dir, args.sources, args.group)
+    if not groups:
+        sys.exit(f"Не найдено ни одного источника в {args.data_dir}")
     logger.info(
         "Источников: %d (%s), этапы: %s",
         sum(map(len, groups.values())),

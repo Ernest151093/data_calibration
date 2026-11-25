@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 pip install -r requirements.txt          # Python ≥ 3.9 (str.removesuffix)
 # создать .env: DATA_DIR, RERANKER_URL, RERANKER_CERT, RERANKER_KEY (см. README.md)
 
-# весь пайплайн по группе источников из configs/sources.json
+# весь пайплайн по всем источникам группы (папки DATA_DIR/ka)
 python main.py --group ka
 
 # отдельные этапы / отдельные источники; --force пересчитывает уже готовые файлы
@@ -42,7 +42,7 @@ flake8 main.py src/                      # настройки в .flake8
 
 ## Соглашения по данным
 
-- Входные данные вне репозитория: `DATA_DIR/<group>/<source_uuid>/*structured.json`, группы — `ka`, `sh`. Группы источников (`uuid -> число вопросов`) — `SOURCES_CONFIG` (`configs/sources.json`).
+- Входные данные вне репозитория: `DATA_DIR/<group>/<source_uuid>/*structured.json`, группы — `ka`, `sh`. Группа — это просто поддиректория `DATA_DIR`; с `--group` берутся все `<uuid>`-папки внутри неё.
 - Пути строит `Layout(data_dir, output_dir, group)` (`src/data.py`): `input_dir(uuid)` и `stage_dir(stage, uuid)` → `output_dir/<stage>/<group>/<uuid>`. Имя папки этапа — константа `STAGE` в его модуле; этап читает вход предыдущего через `layout.stage_dir(<модуль>.STAGE, uuid)`. Имена файлов — константы в `src/data.py`.
 - Формат батча: `{"request": {"batch": [{"messages": [...], "duplicates_count"?: int}]}}`. `messages[-2]["content"]` — вопрос пользователя (`get_question`), `messages[-1]["sources"]` — источники (`get_sources`; поля `data_source_type` = `faq`|`document`, `content` или `metadata.raw_text`, `reranker_relevance_score`).
 - `element_id` в LLM-задачах — `"<вопрос>|||<uuid4>"`; результаты сопоставляются с батчем по вопросу, поэтому вопрос везде берётся из `messages[-2]`.

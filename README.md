@@ -39,7 +39,6 @@ pip install -r requirements.txt
 | `OUTPUT_DIR` | корень результатов: `<stage>/<group>/<source_uuid>/` | `output` |
 | `LOG_DIR` | директория для логов запусков: `run_<дата>_<время>.log` | `logs` |
 | `SKILL_URL` | адрес сервиса навыка (этапы `filter`, `markup`, `report`) | `http://localhost:8080/predict` |
-| `SOURCES_CONFIG` | группы источников | `configs/sources.json` |
 | `FILTER_CONFIG` | конфиг фильтра RAG/no-RAG | `configs/expected_source_binary.json` |
 | `FILTER_PROMPT` | промпт фильтра RAG/no-RAG | `prompts/prompt_rag_norag_v3.txt` |
 | `MARKUP_CONFIG` | конфиг и промпт разметки релевантности | `configs/relevance_markup.json` |
@@ -66,7 +65,7 @@ RERANKER_KEY=/path/to/cert.key
 ## Запуск
 
 ```bash
-# весь пайплайн для группы источников ka из configs/sources.json
+# весь пайплайн для всех источников из DATA_DIR/ka
 python main.py --group ka
 
 # только указанные источники (группа ka/sh определяется по папке в DATA_DIR)
