@@ -19,23 +19,47 @@
 
 ```bash
 pip install -r requirements.txt
-cp .env.example .env
 ```
 
-Заполните `.env`:
+Создайте в корне проекта файл `.env` и укажите в нём параметры.
+
+**Обязательные:**
+
+| Переменная | Назначение |
+|---|---|
+| `DATA_DIR` | директория `structured_data` с поддиректориями групп `ka` и `sh`, в каждой — `<source_uuid>/*structured.json`; только читается |
+| `RERANKER_URL` | адрес реранкера (нужен для этапа `rerank`) |
+| `RERANKER_CERT` | путь к клиентскому сертификату реранкера `cert.pem` (нужен для этапа `rerank`) |
+| `RERANKER_KEY` | путь к ключу сертификата `cert.key` (нужен для этапа `rerank`) |
+
+**Необязательные** (если не указаны, берутся значения по умолчанию):
 
 | Переменная | Назначение | По умолчанию |
 |---|---|---|
-| `DATA_DIR` | директория `structured_data` с поддиректориями групп (`ka`, `sh`), в каждой — `<source_uuid>/*structured.json`; только читается | — (обязательна) |
 | `OUTPUT_DIR` | корень результатов: `<stage>/<group>/<source_uuid>/` | `output` |
-| `SKILL_URL` | адрес сервиса навыка | `http://localhost:8080/predict` |
-| `RERANKER_URL` | адрес реранкера | — |
-| `RERANKER_CERT`, `RERANKER_KEY` | клиентский сертификат и ключ реранкера | — |
+| `SKILL_URL` | адрес сервиса навыка (этапы `filter`, `markup`, `report`) | `http://localhost:8080/predict` |
 | `SOURCES_CONFIG` | группы источников | `configs/sources.json` |
-| `FILTER_CONFIG`, `FILTER_PROMPT` | конфиг и промпт фильтра RAG/no-RAG | `configs/expected_source_binary.json`, `prompts/prompt_rag_norag_v3.txt` |
+| `FILTER_CONFIG` | конфиг фильтра RAG/no-RAG | `configs/expected_source_binary.json` |
+| `FILTER_PROMPT` | промпт фильтра RAG/no-RAG | `prompts/prompt_rag_norag_v3.txt` |
 | `MARKUP_CONFIG` | конфиг и промпт разметки релевантности | `configs/relevance_markup.json` |
 
-Относительные пути считаются от корня проекта. Любое значение можно переопределить аргументом командной строки (`python main.py --help`).
+Пример `.env`:
+
+```dotenv
+# --- Хосты ---
+SKILL_URL=http://localhost:8080/predict
+RERANKER_URL=https://<reranker-host>/predict
+
+# --- Данные ---
+DATA_DIR=/path/to/structured_data
+OUTPUT_DIR=output
+
+# --- Сертификаты реранкера ---
+RERANKER_CERT=/path/to/cert.pem
+RERANKER_KEY=/path/to/cert.key
+```
+
+Относительные пути считаются от корня проекта. Переменные окружения процесса имеют приоритет над `.env`, а аргументы командной строки — над обоими (`python main.py --help`). Если этап `rerank` не запускается (`--stages` без него), параметры реранкера можно не указывать.
 
 ## Запуск
 
