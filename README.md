@@ -37,6 +37,7 @@ pip install -r requirements.txt
 | Переменная | Назначение | По умолчанию |
 |---|---|---|
 | `OUTPUT_DIR` | корень результатов: `<stage>/<group>/<source_uuid>/` | `output` |
+| `LOG_DIR` | директория для логов запусков: `run_<дата>_<время>.log` | `logs` |
 | `SKILL_URL` | адрес сервиса навыка (этапы `filter`, `markup`, `report`) | `http://localhost:8080/predict` |
 | `SOURCES_CONFIG` | группы источников | `configs/sources.json` |
 | `FILTER_CONFIG` | конфиг фильтра RAG/no-RAG | `configs/expected_source_binary.json` |
@@ -53,6 +54,7 @@ RERANKER_URL=https://<reranker-host>/predict
 # --- Данные ---
 DATA_DIR=/path/to/structured_data
 OUTPUT_DIR=output
+LOG_DIR=logs
 
 # --- Сертификаты реранкера ---
 RERANKER_CERT=/path/to/cert.pem

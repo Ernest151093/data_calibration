@@ -23,7 +23,7 @@ flake8 main.py src/                      # настройки в .flake8
 
 Базовые пути (данные, результаты, конфиги, промпты, сертификаты) и хосты (`SKILL_URL`, `RERANKER_URL`) задаются в `.env` и читаются в `src/settings.py`; относительные пути — от корня проекта. Аргументы командной строки переопределяют `.env`, а переменные окружения процесса имеют приоритет над `.env`. Новые пути/хосты добавлять в `settings.py` и в описание `.env` в `README.md`, не хардкодить в модулях.
 
-Без `--sources`/`--group` обрабатываются все источники всех групп `DATA_DIR`; с `--sources` группа каждого UUID определяется по папке `DATA_DIR/<group>/<uuid>` (`group_source_uuids` в `src/data.py`), этапы гоняются по группам. Отчёты пишутся в `OUTPUT_DIR/report/<group>/` (`OUTPUT_DIR` по умолчанию `output/`): `reports_<label>/<uuid>.json`, `report_<label>.xlsx`, `task_<label>.xlsx`; `--label` (по умолчанию — имя группы) также идёт в колонку `source`. Тестов нет.
+Без `--sources`/`--group` обрабатываются все источники всех групп `DATA_DIR`; с `--sources` группа каждого UUID определяется по папке `DATA_DIR/<group>/<uuid>` (`group_source_uuids` в `src/data.py`), этапы гоняются по группам. Отчёты пишутся в `OUTPUT_DIR/report/<group>/` (`OUTPUT_DIR` по умолчанию `output/`): `reports_<label>/<uuid>.json`, `report_<label>.xlsx`, `task_<label>.xlsx`; `--label` (по умолчанию — имя группы) также идёт в колонку `source`. Логи пишутся в консоль и в `LOG_DIR/run_<дата>_<время>.log` (`LOG_DIR` по умолчанию `logs/`, в `.gitignore`). Тестов нет.
 
 ## Внешние сервисы
 

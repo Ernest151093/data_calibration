@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from src import settings
@@ -46,6 +47,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--reranker-workers", type=int, default=7)
 
     parser.add_argument("--output-dir", type=Path, default=settings.OUTPUT_DIR, help="корень результатов, по папке на этап (OUTPUT_DIR)")
+    parser.add_argument("--log-dir", type=Path, default=settings.LOG_DIR, help="директория для файлов логов (LOG_DIR)")
     parser.add_argument("--label", help="значение колонки source и суффикс имён отчётов (по умолчанию — имя группы)")
     parser.add_argument("--force", action="store_true", help="пересчитать этапы, даже если выходные файлы уже есть")
     return parser.parse_args()
@@ -62,9 +64,22 @@ def resolve_source_uuids(args: argparse.Namespace):
     return None
 
 
+def setup_logging(log_dir: Path) -> Path:
+    """Логи пишутся в консоль и в файл LOG_DIR/run_<дата>_<время>.log."""
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / f"run_{datetime.now():%Y%m%d_%H%M%S}.log"
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        handlers=[logging.StreamHandler(), logging.FileHandler(log_path, encoding="utf-8")],
+    )
+    return log_path
+
+
 def main() -> None:
     args = parse_args()
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    log_path = setup_logging(args.log_dir)
+    logger.info("Лог запуска: %s", log_path)
 
     stages = [stage for stage in STAGES if stage in args.stages]
     if args.data_dir is None:

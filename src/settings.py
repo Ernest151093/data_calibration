@@ -32,6 +32,7 @@ RERANKER_URL = env_str("RERANKER_URL")
 # Данные и результаты
 DATA_DIR = env_path("DATA_DIR")
 OUTPUT_DIR = env_path("OUTPUT_DIR", "output")
+LOG_DIR = env_path("LOG_DIR", "logs")
 
 # Конфиги и промпты
 SOURCES_CONFIG = env_path("SOURCES_CONFIG", "configs/sources.json")
